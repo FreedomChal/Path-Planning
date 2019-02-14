@@ -1,4 +1,4 @@
-[image1]: ../PathPlanningModelVisualization.png "Model Visualization"
+[image1]: https://github.com/FreedomChal/Path-Planning/blob/master/PathPlanningModelVisualization.png "Model Visualization"
 
 
 
