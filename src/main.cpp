@@ -136,8 +136,8 @@ int main() {
             right_lane_antibias = 5.0;
           }
 
-	  double max_safe_distance = 20.0;
-	  double max_prefferable_distance = 40.0;
+	  double max_safe_distance = 18.0;
+	  double max_prefferable_distance = 35.0;
 
 	  if(prev_size > 0) {
 	    car_s = end_path_s;
@@ -151,7 +151,6 @@ int main() {
 	  for(int i = 0; i < sensor_fusion.size(); i++) {
 	    // Car is in my lane
 	    float d = sensor_fusion[i][6];
-	    //if(d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2) ) {
 	    double vx = sensor_fusion[i][3];
 	    double vy = sensor_fusion[i][4];
 	    double check_speed = sqrt(vx * vx + vy * vy);
@@ -166,17 +165,23 @@ int main() {
             
             if(d < (2 + 4 * 0 + 2) && d > (2 + 4 * 0 - 2) ) {
               if(car_dist < 75) {
-	        left_lane_loss += 10.0;
+	        left_lane_loss += 10.0; // If a car is nearby, increase the loss for the lane that car is in.
+                if((car_dist < 25) && (check_speed > (ref_vel + 8))) { // If a car is somewhat close to us and going significantly faster, it increases the loss for its lane dramatically.
+                  left_lane_loss += 100.0;
+                }
 	      }
 
 	      if(car_dist < max_safe_distance) {
-	        left_lane_loss += 100.0;
+	        left_lane_loss += 100.0; // If a car in some lane is too close, increase the loss for that lane a lot (enough that the car will never turn into that lane).
 	      }
 	    }
 
 	    if(d < (2 + 4 * 1 + 2) && d > (2 + 4 * 1 - 2) ) {
               if(car_dist < 75) {
                 middle_lane_loss += 10.0;
+                if((car_dist < 25) && (check_speed > (ref_vel + 8))) {
+                  middle_lane_loss += 100.0;
+                }
               }
 
               if(car_dist < max_safe_distance) {
@@ -187,6 +192,9 @@ int main() {
 	    if(d < (2 + 4 * 2 + 2) && d > (2 + 4 * 2 - 2) ) {
               if(car_dist < 75) {
                 right_lane_loss += 10.0;
+                if((car_dist < 25) && (check_speed > (ref_vel + 8))) {
+                  right_lane_loss += 100.0;
+                }
               }
 
               if(car_dist < max_safe_distance) {
@@ -196,13 +204,11 @@ int main() {
 
 	    if(d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2) ) {
 	      if((check_car_s > car_s) && (car_dist < max_prefferable_distance) ) {
-	        // Do some logic here, lower reference velocity so we don't crach into the car in front of us, could also flag to try to change lanes.
-        	is_close = true;
-                target_speed = check_speed;
-                // Lane 0 is left lane, lane 1 is center, lane 2 is right
-		is_changing_lanes = true;
+        	is_close = true; // When there is a car in front of us, set "is_close" to true. This will make the car slow down.
+                target_speed = check_speed; // When there is another car in front of the car, try to go at the same speed as that car.
+		is_changing_lanes = true; // When there is another car in front of the car, prepare to change lanes
 		if(car_dist < max_safe_distance) {
-	          too_close = true;
+	          too_close = true; // If the car in front of us is dangerously close, set "too_close" to true, which will make the car slam on the brakes
 		}
 	      }
 	    }
@@ -214,38 +220,36 @@ int main() {
 	  }
 	  
 	  if(is_close && (ref_vel > target_speed)) {
-	    ref_vel -= .5; // If the nearest car is close but not too close, and our car is going faster than the nearest car, gently slow down. .2
+	    ref_vel -= .2; // If the nearest car is close but not too close, and our car is going faster than the nearest car, gently slow down.
 	  } else if(ref_vel < 49.5) {
-	    ref_vel += .3;
+	    ref_vel += .35;
 	  }
 
+          // A lane is considered safe if the loss for the lane is less than 35
+          // Lane 0 is left lane, lane 1 is center, lane 2 is right
 	  if(is_changing_lanes == true) {
 	    if(lane == 0) {
-	      if((middle_lane_loss < 50.0) && (middle_lane_loss < left_lane_loss)) {
+	      if((middle_lane_loss < 35.0) && ((middle_lane_loss < left_lane_loss) || (right_lane_loss < left_lane_loss))) {
 	        lane = 1;
-		left_lane_antibias += 1500.0;
+		left_lane_antibias += 1500.0; // Increase the antibias for the old lane so that the car does not become indecisive about which lane to stay in
                 right_lane_antibias += 500; // To avoid two consecutive lane changes (which can cause an acceleration violation), add antibias to the opposite side
-		ref_vel -= 0.2;
-		is_changing_lanes = false;
+		is_changing_lanes = false; // Exit the lane changing state
 	      }
 	    } else if(lane == 1) {
               if((left_lane_loss < 35.0) && (left_lane_loss <= right_lane_loss) && (left_lane_loss < middle_lane_loss)) {
 	        lane = 0;
 		middle_lane_antibias += 1500.0;
-		ref_vel -= 0.2;
 		is_changing_lanes = false;
 	      } else if((right_lane_loss < 35.0) && (right_lane_loss < middle_lane_loss)) {
 	        lane = 2;
 		middle_lane_antibias += 1500.0;
-		ref_vel -= 0.2;
 		is_changing_lanes = false;
 	      }
 	    } else if(lane == 2) {
-	      if((middle_lane_loss < 35.0) && (middle_lane_loss < right_lane_loss)) {
+	      if((middle_lane_loss < 35.0) && ((middle_lane_loss < right_lane_loss) || (left_lane_loss < right_lane_loss))) {
 	        lane = 1;
 		right_lane_antibias += 1500.0;
                 left_lane_antibias += 500;
-		ref_vel -= 0.2;
 		is_changing_lanes = false;
 	      }
 	    }
