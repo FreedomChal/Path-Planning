@@ -1,4 +1,5 @@
 [image1]: https://github.com/FreedomChal/Path-Planning/blob/master/PathPlanningModelVisualization.png "Model Visualization"
+[image2]: https://github.com/FreedomChal/Path-Planning/blob/master/CarChangingLanes.png "Lane Change"
 
 
 
@@ -58,11 +59,13 @@ There are 4 basic states: staying in the lane, preparing for lane change, lane c
 
 * If the car detects another car in front of it, it will change to the preparing for lane change state. In this state, the car will slow down if it gets close to another car, and slam on the brakes if it gets way too close. Also, the car will always be looking for a possibility to change lanes, which it judges using a loss function that will be discussed later. The car will not exit this state until it changes lanes.
 
-* If the car decides to change lanes, it will enter the lane change left or lane change right state. The car will set its "lane value" to 0 (left lane), 1 (middle lane), or 2 (right lane). This means that new reference points will be generated in the new lane, and the spline will make a path that changes into the other lane. Once the lane value is changed, the car will go back to staying in its lane.
+* If the car decides to change lanes, it will enter the lane change left or lane change right state. The car will set its "lane value" to 0 (left lane), 1 (middle lane), or 2 (right lane). This means that new reference points will be generated in the new lane, and the spline will make a path that changes into the other lane. Once the lane value is changed, the car will go back to staying in its lane. A lane change is shown below.
+
+![alt text][image2]
 
 #### Loss Function
 
-The loss function is what the model uses to decide what lane to change to. Each lane is given a staring loss equal to the bias against that lane, or the "antibias". Each lane then has its loss value increased by a number proportional to the number of cars in that lane and how far they are away from the car (cars behind the car are penalized less by being considered farther away). Cars 75 meters away or more are ignored, cars 74 meters away or less increase the loss for the lane they are in by 10, and cars closer than 20 meters increase the lane loss by an additional 100, which will prevent the car from ever turning into that lane.
+The loss function is what the model uses to decide what lane to change to. Each lane is given a staring loss equal to the bias against that lane, or the "antibias". Each lane then has its loss value increased by a number proportional to the number of cars in that lane and how far they are away from the car (cars behind the car are penalized less by being considered farther away). Cars 75 meters away or more are ignored, cars 74 meters away or less increase the loss for the lane they are in by 10, and cars less than 18 meters away increase the lane loss by an additional 100, which prevents the car from ever turning into that lane. Also, cars that are less than 25 meters away and going more than 8 mph faster than the car will increase the loss by 100 to prevent the car from being hit while changing lanes.
 
 A lane is considered "safe" if the loss for it is less than 35. If there are two possible lane changes, the model will choose the one with a lower loss. However, if the two lane change options have the same loss, the model will turn left.
 
@@ -74,8 +77,8 @@ The "Antibias" value is the bias against a certain lane. The default values are 
 
 ## Weaknesses/Improvements
 
-One of the main weaknesses of the model I encountered was its indecisiveness while in traffic. When the model is presented with two safe but not very good lane options, it would not be able to decide between the two, and would constantly change between them, often actually staying on the lane line. To overcome this, I added the antibias, among other things. This significantly decreased the model's indecisiveness, but it still can be uncertain while in traffic. This could potentially be overcome by a more intricate loss function so that the model knows better when a lane change is a good option.
+One of the main weaknesses of the model I encountered was its indecisiveness while in traffic. When the model is presented with two safe but not very good lane options, it would not be able to decide between the two, and would constantly change between them, often actually staying on the lane line. To overcome this, I added the antibias, among other things. This significantly decreased the model's indecisiveness, but it still can be uncertain while in traffic. This could potentially be overcome by making changes to the loss function so that the model has a better intuition on when lane changes should be done.
 
 Also, due to how the model will never exit the prepare for lane change state until it changes lanes, the model will sometimes make unnecessary lane changes when it gets out of traffic. This could potentially be overcome by making the model exit the prepare for lane change state when the loss for its lane drops below a certain value.
 
-One other weakness is that when presented with two different lane change options, the model will sometimes change into the lane which has more traffic ahead if there are more cars behind the car in the other lane, even if both lane changes are perfectly safe. The easiest way to fix this would probably just be a more intricate loss function.
+One other weakness is that when presented with two different lane change options, the model will sometimes change into the lane which has more traffic ahead if there are more cars behind the car in the other lane, even if both lane changes are perfectly safe. The easiest way to fix this might simply be fine-tuning the loss function.
