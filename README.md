@@ -41,7 +41,7 @@ This model plans its path using 50 points ahead. I used the point generator show
 
 * The coordinate system is then shifted to be in the car's perspective (car is at (0, 0) and oriented at 0 degrees) to make the math easier.
 
-* A spline is the generated (I used [this](https://kluge.in-chemnitz.de/opensource/spline) spline library) which goes through the reference point and the previously generated 30m spaced points.
+* A spline is generated (I used [this](https://kluge.in-chemnitz.de/opensource/spline) spline library) which goes through the reference point and the previously generated 30m spaced points.
 
 * Then, all the points from the previous iteration are used, and whichever ones were passed by the car are replaced with new ones from the spline, so that there are always 50 points. Points are also spaced at an appropriate distance so the car will go at the desired velocity.
 
